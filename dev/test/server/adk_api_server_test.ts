@@ -1505,6 +1505,45 @@ describe('AdkWebServer', () => {
     }
 
     describe('build_graph', () => {
+      it('keeps a cached agent file alive across requests', async () => {
+        let disposed = false;
+        const cachedAgentFile = {
+          load() {
+            if (disposed) {
+              throw new Error('AgentFile was disposed');
+            }
+            return Promise.resolve(TEST_AGENT);
+          },
+          readReadme: () => Promise.resolve(undefined),
+          async [Symbol.asyncDispose]() {
+            disposed = true;
+          },
+        };
+        agentLoader.getAgentFile = (() =>
+          Promise.resolve(cachedAgentFile)) as unknown as AgentLoader['getAgentFile'];
+
+        await sessionService.createSession({
+          appName: 'testApp',
+          userId: 'testUser',
+          sessionId: 'sessionId',
+        });
+
+        const graph = await client.get('/dev/apps/testApp/build_graph');
+        expect(graph.status).toBe(200);
+        expect(disposed).toBe(false);
+
+        const response = await client.post<Event[]>('/run', {
+          appName: 'testApp',
+          userId: 'testUser',
+          sessionId: 'sessionId',
+          newMessage: {parts: [{text: 'Hello'}], role: 'user'},
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.data).toHaveLength(3);
+        expect(disposed).toBe(false);
+      });
+
       it('serializes the agent tree, its tools and its sub-agents', async () => {
         const child = new LlmAgent({name: 'child', description: 'a child'});
         loadInstead(
