@@ -149,6 +149,7 @@ export class AdkApiServer {
 
   readonly app: express.Application;
   private readonly agentsDir?: string;
+  // The loader caches AgentFile instances and owns their lifecycle.
   private readonly agentLoader: AgentLoader;
   /**
    * Caches below are keyed by request path parameters (`appName`, `eventId`,
@@ -474,7 +475,7 @@ export class AdkApiServer {
 
           const functionCalls = getFunctionCalls(event);
           const functionResponses = getFunctionResponses(event);
-          await using agentFile = await this.agentLoader.getAgentFile(appName);
+          const agentFile = await this.agentLoader.getAgentFile(appName);
           const loaded = await agentFile.load();
           const rootAgent = isApp(loaded) ? loaded.rootAgent : loaded;
 
@@ -1042,7 +1043,7 @@ export class AdkApiServer {
           }
 
           const testData = convertSessionToEvalFormat(session);
-          await using agentFile = await this.agentLoader.getAgentFile(appName);
+          const agentFile = await this.agentLoader.getAgentFile(appName);
           const loaded = await agentFile.load();
           const rootAgent = isApp(loaded) ? loaded.rootAgent : loaded;
           const initialSessionState = isApp(rootAgent)
@@ -1158,7 +1159,7 @@ export class AdkApiServer {
               ? evalSetData.filter((e) => evalIds.includes(e.name))
               : evalSetData;
 
-          await using agentFile = await this.agentLoader.getAgentFile(appName);
+          const agentFile = await this.agentLoader.getAgentFile(appName);
           const loaded = await agentFile.load();
           const rootAgent = isApp(loaded) ? loaded.rootAgent : loaded;
           if (!('subAgents' in rootAgent)) {
@@ -1655,7 +1656,7 @@ export class AdkApiServer {
     }
 
     try {
-      await using agentFile = await this.agentLoader.getAgentFile(appName);
+      const agentFile = await this.agentLoader.getAgentFile(appName);
       const loaded = await agentFile.load();
       const runner = await this.getRunner(loaded, appName);
       const runConfig: RunConfig =
@@ -1727,7 +1728,7 @@ export class AdkApiServer {
       return undefined;
     }
 
-    await using agentFile = await this.agentLoader.getAgentFile(appName);
+    const agentFile = await this.agentLoader.getAgentFile(appName);
     const loaded = await agentFile.load();
 
     return isApp(loaded) ? loaded.rootAgent : loaded;
@@ -1767,7 +1768,7 @@ export class AdkApiServer {
       loadDotenvForAgent(options.appName, this.agentsDir);
     }
 
-    await using agentFile = await this.agentLoader.getAgentFile(
+    const agentFile = await this.agentLoader.getAgentFile(
       options.appName,
     );
     const loaded = await agentFile.load();
